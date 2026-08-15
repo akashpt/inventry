@@ -1,0 +1,32 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  {% include 'layout/head.html' %}
+  <body>
+    <div class="d-lg-flex min-vh-100 bg-light">
+      {% include 'layout/navebar.html' %}
+      <div class="flex-fill">
+        {% include 'layout/search.html' %}
+
+        <div class="container-fluid py-4">
+            {% block content %}
+            {% endblock %}
+        </div>
+      </div>
+    </div>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileSidebarLabel">Inventry</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <nav class="nav flex-column px-3">
+          {% include 'layout/navebarlink.html' %}
+        </nav>
+      </div>
+    </div>
+
+    {% include 'layout/script.html' %}
+  </body>
+</html>

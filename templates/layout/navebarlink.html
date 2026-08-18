@@ -1,23 +1,14 @@
-<a class="nav-link active" href="{% url 'index' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
-<a class="nav-link" href="{% url 'customer' %}"><i class="bi bi-people"></i> Customers</a>
-<a class="nav-link" href="{% url 'merchant' %}"><i class="bi bi-box-seam"></i> Merchant</a>
-<a class="nav-link" href="{% url 'merchant' %}"><i class="bi bi-box-seam"></i> Products</a>
-<a class="nav-link" href="{% url 'merchant' %}"><i class="bi bi-box-seam"></i> Invoice</a>
-<!-- <a class="nav-link" href="expenses.html"><i class="bi bi-receipt"></i> Expenses</a> -->
-<a class="nav-link" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false"
+<a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'index' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+<a class="nav-link {% if request.resolver_match.url_name == 'customer' or request.resolver_match.url_name == 'newcustomer' %}active{% endif %}" href="{% url 'customer' %}"><i class="bi bi-people"></i> Customers</a>
+<a class="nav-link {% if request.resolver_match.url_name == 'merchant' or request.resolver_match.url_name == 'newmerchant' %}active{% endif %}" href="{% url 'merchant' %}"><i class="bi bi-shop"></i> Merchant</a>
+<a class="nav-link {% if request.resolver_match.url_name == 'products' or request.resolver_match.url_name == 'product_new' or request.resolver_match.url_name == 'product_edit' or request.resolver_match.url_name == 'product_delete' %}active{% endif %}" href="{% url 'products' %}"><i class="bi bi-box-seam"></i> Products</a>
+<a class="nav-link {% if request.resolver_match.url_name == 'invoice' or request.resolver_match.url_name == 'invoice_new' or request.resolver_match.url_name == 'invoice_edit' or request.resolver_match.url_name == 'invoice_preview' or request.resolver_match.url_name == 'invoice_delete' %}active{% endif %}" href="{% url 'invoice' %}"><i class="bi bi-receipt"></i> Invoice</a>
+<a class="nav-link {% if request.resolver_match.url_name == 'investment' or request.resolver_match.url_name == 'investment_new' or request.resolver_match.url_name == 'investment_edit' or request.resolver_match.url_name == 'investment_delete' or request.resolver_match.url_name == 'withdrawal' or request.resolver_match.url_name == 'withdrawal_new' or request.resolver_match.url_name == 'withdrawal_edit' or request.resolver_match.url_name == 'withdrawal_delete' or request.resolver_match.url_name == 'expenses' or request.resolver_match.url_name == 'expense_new' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_delete' or request.resolver_match.url_name == 'petty_cash' or request.resolver_match.url_name == 'petty_cash_new' or request.resolver_match.url_name == 'petty_cash_edit' or request.resolver_match.url_name == 'petty_cash_delete' %}active{% endif %}" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false"
     aria-controls="salesMenu"><i class="bi bi-graph-up"></i> Payments</a>
-<div class="collapse ps-4" id="salesMenu">
-    <a class="nav-link" href="quotes.html">Investment</a>
-    <a class="nav-link" href="quotes.html">Withdrawal</a>
-    <a class="nav-link" href="quotes.html">Expenses</a>
+<div class="collapse ps-4 {% if request.resolver_match.url_name == 'investment' or request.resolver_match.url_name == 'investment_new' or request.resolver_match.url_name == 'investment_edit' or request.resolver_match.url_name == 'investment_delete' or request.resolver_match.url_name == 'withdrawal' or request.resolver_match.url_name == 'withdrawal_new' or request.resolver_match.url_name == 'withdrawal_edit' or request.resolver_match.url_name == 'withdrawal_delete' or request.resolver_match.url_name == 'expenses' or request.resolver_match.url_name == 'expense_new' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_delete' or request.resolver_match.url_name == 'petty_cash' or request.resolver_match.url_name == 'petty_cash_new' or request.resolver_match.url_name == 'petty_cash_edit' or request.resolver_match.url_name == 'petty_cash_delete' %}show{% endif %}" id="salesMenu">
+    <a class="nav-link {% if request.resolver_match.url_name == 'investment' or request.resolver_match.url_name == 'investment_new' or request.resolver_match.url_name == 'investment_edit' or request.resolver_match.url_name == 'investment_delete' %}active{% endif %}" href="{% url 'investment' %}">Investment</a>
+    <a class="nav-link {% if request.resolver_match.url_name == 'withdrawal' or request.resolver_match.url_name == 'withdrawal_new' or request.resolver_match.url_name == 'withdrawal_edit' or request.resolver_match.url_name == 'withdrawal_delete' %}active{% endif %}" href="{% url 'withdrawal' %}">Withdrawal</a>
+    <a class="nav-link {% if request.resolver_match.url_name == 'expenses' or request.resolver_match.url_name == 'expense_new' or request.resolver_match.url_name == 'expense_edit' or request.resolver_match.url_name == 'expense_delete' %}active{% endif %}" href="{% url 'expenses' %}">Expenses</a>
+    <a class="nav-link {% if request.resolver_match.url_name == 'petty_cash' or request.resolver_match.url_name == 'petty_cash_new' or request.resolver_match.url_name == 'petty_cash_edit' or request.resolver_match.url_name == 'petty_cash_delete' %}active{% endif %}" href="{% url 'petty_cash' %}">Petty Cash</a>
 </div>
-<a class="nav-link" href="reports.html"><i class="bi bi-bar-chart-line"></i> Reports</a>
-
-<!-- <a class="nav-link" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false" aria-controls="salesMenu"><i class="bi bi-graph-up"></i> Sales</a>
-<div class="collapse ps-4" id="salesMenu">
-<a class="nav-link" href="quotes.html">Quotes</a>
-</div>
-<a class="nav-link" href="#"><i class="bi bi-cart4"></i> Purchases</a>
-<a class="nav-link" href="payments-received.html"><i class="bi bi-credit-card"></i> Payments</a>
-
-<a class="nav-link" href="#"><i class="bi bi-cash-stack"></i> Cash & Banking</a> -->
+<a class="nav-link" href="#"><i class="bi bi-bar-chart-line"></i> Reports</a>

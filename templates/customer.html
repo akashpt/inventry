@@ -21,6 +21,11 @@
 
 <div class="section-card mb-4">
     <div class="card-body">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
         <div class="row gy-3 align-items-center mb-3">
             <div class="col-md-6">
                 <div class="input-group">
@@ -52,48 +57,32 @@
                         <th>Phone</th>
                         <th class="text-end">Receivables</th>
                         <th>Status</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% for customer in customers %}
                     <tr>
                         <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Salman Ahmed</td>
-                        <td>Al Noor Trading</td>
-                        <td>salman@alnoor.ae</td>
-                        <td>+971 55 123 4567</td>
-                        <td class="text-end">AED 48,600</td>
-                        <td><span class="badge badge-paid badge-status">Active</span></td>
+                        <td>{{ customer.display_name }}</td>
+                        <td>{{ customer.company_name|default:"-" }}</td>
+                        <td>{{ customer.email|default:"-" }}</td>
+                        <td>{{ customer.mobile|default:customer.work_phone|default:"-" }}</td>
+                        <td class="text-end">AED {{ customer.receivables }}</td>
+                        <td><span class="badge badge-paid badge-status">{{ customer.status }}</span></td>
+                        <td class="text-end">
+                            <a href="{% url 'customer_edit' customer.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                            <a href="{% url 'customer_delete' customer.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                        </td>
                     </tr>
+                    {% empty %}
                     <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Rania Hossain</td>
-                        <td>Gulf Hospitality</td>
-                        <td>rania@gulfhospitality.com</td>
-                        <td>+971 50 987 6543</td>
-                        <td class="text-end">AED 11,320</td>
-                        <td><span class="badge badge-sent badge-status">Pending</span></td>
+                        <td colspan="8" class="text-center text-muted py-4">No customers added yet.</td>
                     </tr>
-                    <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Omar Al Mazrouei</td>
-                        <td>Desert Events</td>
-                        <td>omar@desertevents.ae</td>
-                        <td>+971 52 765 4321</td>
-                        <td class="text-end">AED 23,280</td>
-                        <td><span class="badge badge-overdue badge-status">Overdue</span></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Farah Saeed</td>
-                        <td>City Office Supplies</td>
-                        <td>farah@citysupplies.ae</td>
-                        <td>+971 4 555 1234</td>
-                        <td class="text-end">AED 6,900</td>
-                        <td><span class="badge badge-draft badge-status">Draft</span></td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
-            <div class="text-muted small">Showing 4 of 24 customers</div>
+            <div class="text-muted small">Showing {{ customers|length }} customer{{ customers|length|pluralize }}</div>
         </div>
     </div>
 </div>

@@ -3,7 +3,7 @@
             <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
               <i class="bi bi-list"></i>
             </button>
-            <a class="navbar-brand d-lg-none" href="index.html">Inventry</a>
+            <a class="navbar-brand d-lg-none" href="{% url 'index' %}">Inventry</a>
             <form class="d-none d-md-flex flex-fill mx-3" role="search">
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -14,10 +14,11 @@
               <div class="dropdown">
                 <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="quickCreateMenu" data-bs-toggle="dropdown" aria-expanded="false">+ New</button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickCreateMenu">
-                  <li><a class="dropdown-item" href="customer-new.html">New Customer</a></li>
-                  <li><a class="dropdown-item" href="item-new.html">New Item</a></li>
-                  <li><a class="dropdown-item" href="quotes.html">New Quote</a></li>
-                  <li><a class="dropdown-item" href="payments-received.html">Record Payment</a></li>
+                  <li><a class="dropdown-item" href="{% url 'newcustomer' %}">New Customer</a></li>
+                  <li><a class="dropdown-item" href="{% url 'newmerchant' %}">New Merchant</a></li>
+                  <li><a class="dropdown-item" href="{% url 'product_new' %}">New Product</a></li>
+                  <li><a class="dropdown-item" href="{% url 'invoice_new' %}">New Invoice</a></li>
+                  <li><a class="dropdown-item" href="{% url 'petty_cash_new' %}">Petty Cash</a></li>
                 </ul>
               </div>
               <button class="btn btn-outline-secondary btn-sm" type="button" aria-label="Notifications"><i class="bi bi-bell"></i></button>

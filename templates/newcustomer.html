@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block content %}
+<form method="post" action="{% url 'newcustomer' %}">
+    {% csrf_token %}
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
     <div>
         <nav aria-label="breadcrumb">
@@ -16,29 +18,32 @@
     </div>
     <div class="top-actions d-flex gap-2">
         <a href="{% url 'customer' %}" class="btn btn-outline-secondary">Cancel</a>
-        <button class="btn btn-primary">Save</button>
+        <button class="btn btn-primary" type="submit">Save</button>
     </div>
 </div>
 
 <div class="section-card mb-4">
     <div class="card-body">
+        {% if form.errors %}
+            <div class="alert alert-danger" role="alert">Please check the highlighted customer details.</div>
+        {% endif %}
         <div class="mb-4">
             <h5 class="mb-3">Customer Profile</h5>
             <div class="row gy-3">
                 <div class="col-md-3">
                     <label class="form-label">Customer Type</label>
                     <div class="btn-group d-flex" role="group">
-                        <input type="radio" class="btn-check" name="customerType" id="typeBusiness" autocomplete="off"
+                        <input type="radio" class="btn-check" name="customer_type" id="typeBusiness" value="Business" autocomplete="off"
                             checked>
                         <label class="btn btn-outline-secondary" for="typeBusiness">Business</label>
-                        <input type="radio" class="btn-check" name="customerType" id="typeIndividual"
+                        <input type="radio" class="btn-check" name="customer_type" id="typeIndividual" value="Individual"
                             autocomplete="off">
                         <label class="btn btn-outline-secondary" for="typeIndividual">Individual</label>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label for="salutation" class="form-label">Salutation</label>
-                    <select id="salutation" class="form-select">
+                    <select id="salutation" name="salutation" class="form-select">
                         <option>Mr.</option>
                         <option>Ms.</option>
                         <option>Mrs.</option>
@@ -47,46 +52,46 @@
                 </div>
                 <div class="col-md-3">
                     <label for="firstName" class="form-label">First Name</label>
-                    <input id="firstName" class="form-control" type="text" placeholder="First name">
+                    <input id="firstName" name="first_name" class="form-control" type="text" placeholder="First name">
                 </div>
                 <div class="col-md-3">
                     <label for="lastName" class="form-label">Last Name</label>
-                    <input id="lastName" class="form-control" type="text" placeholder="Last name">
+                    <input id="lastName" name="last_name" class="form-control" type="text" placeholder="Last name">
                 </div>
                 <div class="col-md-6">
                     <label for="companyName" class="form-label">Company Name</label>
-                    <input id="companyName" class="form-control" type="text" placeholder="Company name">
+                    <input id="companyName" name="company_name" class="form-control" type="text" placeholder="Company name">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Display Name <span class="text-danger">*</span></label>
-                    <input class="form-control mb-2" type="text" placeholder="In Primary Language">
-                    <input class="form-control rtl-input" type="text" placeholder="In Secondary Language (Arabic)"
+                    <input class="form-control mb-2" name="display_name" type="text" placeholder="In Primary Language" required>
+                    <input class="form-control rtl-input" name="display_name_secondary" type="text" placeholder="In Secondary Language (Arabic)"
                         dir="rtl">
                 </div>
                 <div class="col-md-6">
                     <label for="customerEmail" class="form-label">Email Address</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                        <input id="customerEmail" class="form-control" type="email" placeholder="name@example.com">
+                        <input id="customerEmail" name="email" class="form-control" type="email" placeholder="name@example.com">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Work Phone</label>
                     <div class="input-group">
                         <span class="input-group-text">+971</span>
-                        <input class="form-control" type="tel" placeholder="50 123 4567">
+                        <input class="form-control" name="work_phone" type="tel" placeholder="50 123 4567">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Mobile</label>
                     <div class="input-group">
                         <span class="input-group-text">+971</span>
-                        <input class="form-control" type="tel" placeholder="55 987 6543">
+                        <input class="form-control" name="mobile" type="tel" placeholder="55 987 6543">
                     </div>
                 </div>
                 <div class="col-md-4">
                     <label for="customerLanguage" class="form-label">Customer Language</label>
-                    <select id="customerLanguage" class="form-select">
+                    <select id="customerLanguage" name="language" class="form-select">
                         <option selected>English</option>
                         <option>Arabic</option>
                         <option>Hindi</option>
@@ -122,14 +127,14 @@
                     <div class="row gy-3">
                         <div class="col-md-4">
                             <label for="currency" class="form-label">Currency</label>
-                            <select id="currency" class="form-select">
+                            <select id="currency" name="currency" class="form-select">
                                 <option selected>AED - UAE Dirham</option>
                                 <option>USD - US Dollar</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label for="paymentTerms" class="form-label">Payment Terms</label>
-                            <select id="paymentTerms" class="form-select">
+                            <select id="paymentTerms" name="payment_terms" class="form-select">
                                 <option>Due on Receipt</option>
                                 <option>Net 15</option>
                                 <option>Net 30</option>
@@ -137,7 +142,7 @@
                         </div>
                         <div class="col-md-4 d-flex align-items-center">
                             <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" id="enablePortal">
+                                <input class="form-check-input" type="checkbox" name="portal_enabled" id="enablePortal">
                                 <label class="form-check-label" for="enablePortal">Enable Portal?</label>
                             </div>
                         </div>
@@ -156,14 +161,14 @@
                 <div class="tab-pane fade" id="address" role="tabpanel" aria-labelledby="address-tab">
                     <div class="row gy-3">
                         <div class="col-md-6"><label class="form-label">Street Address</label><input
-                                class="form-control" type="text"></div>
-                        <div class="col-md-6"><label class="form-label">City</label><input class="form-control"
+                                class="form-control" name="street_address" type="text"></div>
+                        <div class="col-md-6"><label class="form-label">City</label><input class="form-control" name="city"
                                 type="text"></div>
-                        <div class="col-md-4"><label class="form-label">State</label><input class="form-control"
+                        <div class="col-md-4"><label class="form-label">State</label><input class="form-control" name="state"
                                 type="text"></div>
                         <div class="col-md-4"><label class="form-label">ZIP / Postal Code</label><input
-                                class="form-control" type="text"></div>
-                        <div class="col-md-4"><label class="form-label">Country</label><select class="form-select">
+                                class="form-control" name="postal_code" type="text"></div>
+                        <div class="col-md-4"><label class="form-label">Country</label><select class="form-select" name="country">
                                 <option>United Arab Emirates</option>
                                 <option>Saudi Arabia</option>
                             </select></div>
@@ -196,18 +201,19 @@
                 </div>
                 <div class="tab-pane fade" id="remarks" role="tabpanel" aria-labelledby="remarks-tab">
                     <label class="form-label">Internal Notes</label>
-                    <textarea class="form-control" rows="4"
+                    <textarea class="form-control" name="remarks" rows="4"
                         placeholder="Add private remarks for internal users."></textarea>
                 </div>
             </div>
         </div>
 
         <div class="mt-4 d-flex gap-2">
-            <button class="btn btn-primary">Save</button>
-            <button class="btn btn-outline-primary">Save and Subscribe</button>
+            <button class="btn btn-primary" type="submit">Save</button>
+            <button class="btn btn-outline-primary" type="submit">Save and Subscribe</button>
             <a href="{% url 'customer' %}" class="btn btn-link">Cancel</a>
         </div>
     </div>
 </div>
+</form>
 
 {% endblock %}

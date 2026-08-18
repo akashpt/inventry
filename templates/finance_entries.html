@@ -1,0 +1,95 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ entry_type }}</li>
+            </ol>
+        </nav>
+        <h1 class="page-title mb-1">{{ title }}</h1>
+        <p class="text-muted mb-0">Create, update, and track {{ entry_type|lower }} records.</p>
+    </div>
+    <div class="top-actions d-flex gap-2">
+        <button class="btn btn-outline-secondary">Filter</button>
+        <a href="{% url new_url %}" class="btn btn-primary">+ New {{ entry_type }}</a>
+    </div>
+</div>
+
+<div class="section-card mb-4">
+    <div class="card-body">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        <div class="row gy-3 align-items-center mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input class="form-control" placeholder="Search by title, party or reference" aria-label="Search {{ entry_type }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select">
+                    <option selected>All Statuses</option>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <button class="btn btn-outline-primary btn-sm">Export</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Party</th>
+                        <th>Payment Mode</th>
+                        <th>Reference</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.entry_date }}</td>
+                        <td>{{ entry.title }}</td>
+                        <td>{{ entry.party_name|default:"-" }}</td>
+                        <td>{{ entry.payment_mode|default:"-" }}</td>
+                        <td>{{ entry.reference_no|default:"-" }}</td>
+                        <td class="text-end">AED {{ entry.amount }}</td>
+                        <td><span class="badge badge-paid badge-status">{{ entry.status }}</span></td>
+                        <td class="text-end">
+                            {% if entry_type == "Investment" %}
+                                <a href="{% url 'investment_edit' entry.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                                <a href="{% url 'investment_delete' entry.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            {% elif entry_type == "Withdrawal" %}
+                                <a href="{% url 'withdrawal_edit' entry.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                                <a href="{% url 'withdrawal_delete' entry.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            {% else %}
+                                <a href="{% url 'expense_edit' entry.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                                <a href="{% url 'expense_delete' entry.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No {{ entry_type|lower }} records added yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="text-muted small">Showing {{ entries|length }} {{ entry_type|lower }} record{{ entries|length|pluralize }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

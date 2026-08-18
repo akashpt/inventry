@@ -91,11 +91,9 @@ function initButtonActions() {
     if (!button || shouldSkipButton(button)) return;
 
     const label = controlLabel(button);
-    const page = currentPage();
-
-    if (label === '+ new' && page === 'index.html') {
+    if (button.dataset.saveRedirect) {
       event.preventDefault();
-      window.location.href = 'customer-new.html';
+      saveAndGo(button.dataset.saveMessage || 'Saved.', button.dataset.saveRedirect);
       return;
     }
 
@@ -105,27 +103,21 @@ function initButtonActions() {
       return;
     }
 
-    // if (label === 'save' || label === 'save and subscribe') {
-    //   event.preventDefault();
-    //   saveAndGo('Customer saved.', 'customers.html');
-    //   return;
-    // }
-
     if (label === 'save item') {
       event.preventDefault();
-      saveAndGo('Item saved.', 'items.html');
+      saveAndGo('Item saved.', '/products');
       return;
     }
 
     if (label === 'save quote') {
       event.preventDefault();
-      saveAndGo('Quote saved.', 'quotes.html');
+      saveAndGo('Quote saved.', '/invoice');
       return;
     }
 
     if (label === 'convert to invoice') {
       event.preventDefault();
-      saveAndGo('Quote converted. Record the payment next.', 'payments-received.html');
+      saveAndGo('Quote converted.', '/invoice');
       return;
     }
 
@@ -186,7 +178,7 @@ function initPlaceholderLinks() {
       const label = controlLabel(link);
       if (label === 'home') {
         event.preventDefault();
-        window.location.href = 'index.html';
+        window.location.href = '/';
         return;
       }
 
@@ -202,7 +194,7 @@ function shouldSkipButton(button) {
 
 function currentPage() {
   const page = window.location.pathname.split('/').pop();
-  return page || 'index.html';
+  return page || 'index';
 }
 
 function normalizeText(text) {
@@ -300,7 +292,7 @@ function exportNearestTable(button) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = currentPage().replace('.html', '') + '-export.csv';
+  link.download = currentPage() + '-export.csv';
   link.click();
   URL.revokeObjectURL(link.href);
   showToast('Export downloaded.');
@@ -357,6 +349,10 @@ function actionMessage(label) {
     'profile': 'Profile page is not connected yet.',
     'settings': 'Settings page is not connected yet.',
     'logout': 'Logout is not connected in this static demo.',
+    'investment': 'Investment page is not available yet.',
+    'withdrawal': 'Withdrawal page is not available yet.',
+    'expenses': 'Expenses page is not available yet.',
+    'reports': 'Reports page is not available yet.',
     'purchases': 'Purchases page is not available yet.',
     'cash & banking': 'Cash and banking page is not available yet.',
     'more': 'More actions are ready to connect.',

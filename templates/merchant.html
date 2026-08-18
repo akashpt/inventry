@@ -11,7 +11,7 @@
             </ol>
         </nav>
         <h1 class="page-title mb-1">Merchant List</h1>
-        <p class="text-muted mb-0">Manage your merchant contacts, receivables, and merchant status.</p>
+        <p class="text-muted mb-0">Manage merchant contacts, payables, and status.</p>
     </div>
     <div class="top-actions d-flex gap-2">
         <button class="btn btn-outline-secondary">Filter</button>
@@ -21,12 +21,16 @@
 
 <div class="section-card mb-4">
     <div class="card-body">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
         <div class="row gy-3 align-items-center mb-3">
             <div class="col-md-6">
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input class="form-control" placeholder="Search by name, email or company"
-                        aria-label="Search customers">
+                    <input class="form-control" placeholder="Search by name, email or company" aria-label="Search merchants">
                 </div>
             </div>
             <div class="col-md-3">
@@ -34,7 +38,6 @@
                     <option selected>All Statuses</option>
                     <option>Active</option>
                     <option>Inactive</option>
-                    <option>Overdue</option>
                 </select>
             </div>
             <div class="col-md-3 text-md-end">
@@ -50,52 +53,35 @@
                         <th>Company</th>
                         <th>Email</th>
                         <th>Phone</th>
-                        <th class="text-end">Receivables</th>
+                        <th class="text-end">Payables</th>
                         <th>Status</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% for merchant in merchants %}
                     <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Salman Ahmed</td>
-                        <td>Al Noor Trading</td>
-                        <td>salman@alnoor.ae</td>
-                        <td>+971 55 123 4567</td>
-                        <td class="text-end">AED 48,600</td>
-                        <td><span class="badge badge-paid badge-status">Active</span></td>
+                        <td><input type="checkbox" aria-label="Select merchant"></td>
+                        <td>{{ merchant.display_name }}</td>
+                        <td>{{ merchant.company_name|default:"-" }}</td>
+                        <td>{{ merchant.email|default:"-" }}</td>
+                        <td>{{ merchant.mobile|default:merchant.work_phone|default:"-" }}</td>
+                        <td class="text-end">AED {{ merchant.payables }}</td>
+                        <td><span class="badge badge-paid badge-status">{{ merchant.status }}</span></td>
+                        <td class="text-end">
+                            <a href="{% url 'merchant_edit' merchant.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                            <a href="{% url 'merchant_delete' merchant.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                        </td>
                     </tr>
+                    {% empty %}
                     <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Rania Hossain</td>
-                        <td>Gulf Hospitality</td>
-                        <td>rania@gulfhospitality.com</td>
-                        <td>+971 50 987 6543</td>
-                        <td class="text-end">AED 11,320</td>
-                        <td><span class="badge badge-sent badge-status">Pending</span></td>
+                        <td colspan="8" class="text-center text-muted py-4">No merchants added yet.</td>
                     </tr>
-                    <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Omar Al Mazrouei</td>
-                        <td>Desert Events</td>
-                        <td>omar@desertevents.ae</td>
-                        <td>+971 52 765 4321</td>
-                        <td class="text-end">AED 23,280</td>
-                        <td><span class="badge badge-overdue badge-status">Overdue</span></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" aria-label="Select customer"></td>
-                        <td>Farah Saeed</td>
-                        <td>City Office Supplies</td>
-                        <td>farah@citysupplies.ae</td>
-                        <td>+971 4 555 1234</td>
-                        <td class="text-end">AED 6,900</td>
-                        <td><span class="badge badge-draft badge-status">Draft</span></td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
-            <div class="text-muted small">Showing 4 of 24 customers</div>
+            <div class="text-muted small">Showing {{ merchants|length }} merchant{{ merchants|length|pluralize }}</div>
         </div>
     </div>
 </div>
-
 {% endblock %}

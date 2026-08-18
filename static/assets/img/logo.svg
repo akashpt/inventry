@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="48" viewBox="0 0 180 48" role="img" aria-labelledby="title">
+  <title id="title">Inventry</title>
+  <rect width="48" height="48" rx="10" fill="#2563eb"/>
+  <path d="M14 15h20v5H14v-5Zm0 8h20v5H14v-5Zm0 8h14v5H14v-5Z" fill="#ffffff"/>
+  <text x="60" y="31" fill="#0f172a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="800">Inventry</text>
+</svg>

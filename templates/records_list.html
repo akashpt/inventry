@@ -1,0 +1,84 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ breadcrumb }}</li>
+            </ol>
+        </nav>
+        <h1 class="page-title mb-1">{{ title }}</h1>
+        <p class="text-muted mb-0">{{ description }}</p>
+    </div>
+    <div class="top-actions d-flex gap-2">
+        <button class="btn btn-outline-secondary">Filter</button>
+        <a href="{% url new_url %}" class="btn btn-primary">+ New</a>
+    </div>
+</div>
+
+<div class="section-card mb-4">
+    <div class="card-body">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        <div class="row gy-3 align-items-center mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input class="form-control" placeholder="Search records" aria-label="Search records">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select">
+                    <option selected>All Statuses</option>
+                    <option>Active</option>
+                    <option>Pending</option>
+                    <option>Completed</option>
+                    <option>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <button class="btn btn-outline-primary btn-sm">Export</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        {% for heading, field in fields %}
+                            <th>{{ heading }}</th>
+                        {% endfor %}
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        {% for cell in row.cells %}
+                            <td>{{ cell|default:"-" }}</td>
+                        {% endfor %}
+                        <td class="text-end">
+                            {% for label, action_url in actions %}
+                                <a href="{% url action_url row.record.id %}" class="btn btn-outline-secondary btn-sm">{{ label }}</a>
+                            {% endfor %}
+                            <a href="{% url edit_url row.record.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
+                            <a href="{% url delete_url row.record.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ fields|length|add:1 }}" class="text-center text-muted py-4">No records added yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="text-muted small">Showing {{ records|length }} record{{ records|length|pluralize }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

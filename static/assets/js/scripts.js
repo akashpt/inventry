@@ -348,7 +348,6 @@ function actionMessage(label) {
     'notifications': 'No new notifications.',
     'profile': 'Profile page is not connected yet.',
     'settings': 'Settings page is not connected yet.',
-    'logout': 'Logout is not connected in this static demo.',
     'investment': 'Investment page is not available yet.',
     'withdrawal': 'Withdrawal page is not available yet.',
     'expenses': 'Expenses page is not available yet.',

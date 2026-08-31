@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  {% include 'layout/head.html' %}
+  <body class="auth-page">
+    <main class="auth-shell">
+      <section class="auth-panel">
+        <div class="auth-brand">
+          <img src="{% static 'assets/img/logo.svg' %}" alt="Inventry">
+          <div>
+            <h1>Forgot Username</h1>
+            <p>Active usernames available for this installation.</p>
+          </div>
+        </div>
+
+        <div class="auth-user-list auth-user-list-open">
+          <ul>
+            {% for profile in users %}
+            <li>
+              <span>{{ profile.user.username }}</span>
+              <small>{{ profile.role }}</small>
+            </li>
+            {% empty %}
+            <li><span>No users registered yet.</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="auth-links">
+          <a href="{% url 'register' %}">Register new account</a>
+          <a href="{% url 'login' %}">Back to login</a>
+        </div>
+      </section>
+    </main>
+    {% include 'layout/script.html' %}
+  </body>
+</html>

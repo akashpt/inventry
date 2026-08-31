@@ -42,6 +42,9 @@
                         {% if field.errors %}
                             <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
                         {% endif %}
+                        {% if field.help_text %}
+                            <span class="helptext">{{ field.help_text }}</span>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>

@@ -1,14 +1,198 @@
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.db.models import Count, Sum
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from decimal import Decimal
 
-from .forms import CustomerForm, FinanceEntryForm, InvoiceForm, MerchantForm, PettyCashTransactionForm, ProductForm
-from .models import Customer, FinanceEntry, Invoice, Merchant, PettyCashTransaction, Product
+from .forms import (
+    CustomerForm,
+    DeliveryNoteForm,
+    FinanceEntryForm,
+    InvoiceForm,
+    MerchantForm,
+    PettyCashTransactionForm,
+    ProductForm,
+    ProductionTaskForm,
+    QuotationForm,
+    RegisterForm,
+    RefurbishmentJobForm,
+    ReturnRMAForm,
+    SalesOrderForm,
+    StockMovementForm,
+    UserProfileForm,
+    WarehouseForm,
+)
+from .models import (
+    AuditLog,
+    Customer,
+    DeliveryNote,
+    FinanceEntry,
+    Invoice,
+    Merchant,
+    PettyCashTransaction,
+    Product,
+    ProductionTask,
+    Quotation,
+    RefurbishmentJob,
+    ReturnRMA,
+    SalesOrder,
+    StockMovement,
+    UserProfile,
+    Warehouse,
+    WarehouseStock,
+)
 
 # Create your views here.
 
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("index")
+
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect(request.GET.get("next") or "index")
+        messages.error(request, "Invalid username or password.")
+
+    users = UserProfile.objects.select_related("user").filter(status="Active", user__is_active=True).order_by("user__username")
+    return render(request, "login.html", {"users": users})
+
+
+def register_view(request):
+    if request.user.is_authenticated:
+        return redirect("index")
+
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            profile = form.save()
+            login(request, profile.user)
+            messages.success(request, "Registration complete.")
+            return redirect("index")
+    else:
+        form = RegisterForm()
+
+    return render(request, "register.html", {"form": form})
+
+
+def forgot_username_view(request):
+    users = UserProfile.objects.select_related("user").filter(status="Active", user__is_active=True).order_by("user__username")
+    return render(request, "forgot_username.html", {"users": users})
+
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out.")
+    return redirect("login")
+
+
 def index(request):
-    return render(request, "index.html")
+    active_finance = FinanceEntry.objects.filter(status="Active")
+    investments = active_finance.filter(entry_type=FinanceEntry.INVESTMENT).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    withdrawals = active_finance.filter(entry_type=FinanceEntry.WITHDRAWAL).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    expenses = active_finance.filter(entry_type=FinanceEntry.EXPENSE).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    petty_add = PettyCashTransaction.objects.filter(status="Active", transaction_type=PettyCashTransaction.ADD).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    petty_minus = PettyCashTransaction.objects.filter(status="Active", transaction_type=PettyCashTransaction.MINUS).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    receivables = Invoice.objects.filter(status="Active").aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    payables = Merchant.objects.filter(status="Active").aggregate(total=Sum("payables"))["total"] or Decimal("0")
+    stock_alerts = Product.objects.filter(status="Active", stock_quantity__lte=5).count()
+
+    return render(request, "index.html", {
+        "receivables": receivables,
+        "payables": payables,
+        "cash_balance": investments + petty_add - withdrawals - expenses - petty_minus,
+        "petty_cash_balance": petty_add - petty_minus,
+        "open_invoices": Invoice.objects.filter(status="Active").count(),
+        "stock_alerts": stock_alerts,
+        "production_open": RefurbishmentJob.objects.exclude(production_status=RefurbishmentJob.READY).count(),
+        "returns_open": ReturnRMA.objects.exclude(approval_status=ReturnRMA.CLOSED).count(),
+        "recent_invoices": Invoice.objects.select_related("customer")[:5],
+        "recent_returns": ReturnRMA.objects.select_related("customer", "product")[:5],
+        "recent_customers": Customer.objects.all()[:5],
+    })
+
+
+MODULES = {
+    "warehouses": {
+        "model": Warehouse,
+        "form": WarehouseForm,
+        "title": "Warehouses",
+        "description": "Manage warehouse locations, responsible staff, and active status.",
+        "breadcrumb": "Warehouses",
+        "fields": [("Code", "code"), ("Name", "name"), ("Location", "location"), ("Manager", "manager_name"), ("Status", "status")],
+    },
+    "stock_movements": {
+        "model": StockMovement,
+        "form": StockMovementForm,
+        "title": "Stock Movements",
+        "description": "Receive, transfer, adjust, issue, and barcode-track stock.",
+        "breadcrumb": "Stock Movements",
+        "fields": [("Date", "movement_date"), ("Type", "movement_type"), ("Product", "product"), ("Qty", "quantity"), ("Reference", "reference_no"), ("Status", "status")],
+    },
+    "refurbishment_jobs": {
+        "model": RefurbishmentJob,
+        "form": RefurbishmentJobForm,
+        "title": "Refurbishment Jobs",
+        "description": "Track device intake, model status, supplier status, QC, and production progress.",
+        "breadcrumb": "Refurbishment Jobs",
+        "fields": [("Intake No.", "intake_no"), ("Model", "model_name"), ("Serial", "serial_no"), ("Technician", "qc_technician"), ("Production", "production_status"), ("Supplier Status", "supplier_status")],
+    },
+    "production_tasks": {
+        "model": ProductionTask,
+        "form": ProductionTaskForm,
+        "title": "Production Tasks",
+        "description": "Assign checking, repair, QC, and completion tasks to technicians.",
+        "breadcrumb": "Production Tasks",
+        "fields": [("Date", "task_date"), ("Job", "job"), ("Stage", "stage"), ("Assigned To", "assigned_to"), ("Issue", "issue_found"), ("Status", "status")],
+    },
+    "quotations": {
+        "model": Quotation,
+        "form": QuotationForm,
+        "title": "Quotations",
+        "description": "Create and approve customer quotations before sales orders.",
+        "breadcrumb": "Quotations",
+        "fields": [("Quote No.", "quotation_number"), ("Customer", "customer"), ("Date", "quotation_date"), ("Valid Until", "valid_until"), ("Amount", "amount"), ("Status", "status")],
+        "actions": [("Create Order", "quotation_to_order")],
+    },
+    "sales_orders": {
+        "model": SalesOrder,
+        "form": SalesOrderForm,
+        "title": "Sales Orders",
+        "description": "Convert approved quotations into customer sales orders.",
+        "breadcrumb": "Sales Orders",
+        "fields": [("Order No.", "order_number"), ("Customer", "customer"), ("Quote", "quotation"), ("Order Date", "order_date"), ("Amount", "amount"), ("Status", "status")],
+        "actions": [("Delivery Note", "sales_order_to_delivery"), ("Invoice", "sales_order_to_invoice")],
+    },
+    "delivery_notes": {
+        "model": DeliveryNote,
+        "form": DeliveryNoteForm,
+        "title": "Delivery Notes",
+        "description": "Track deliveries, dispatch references, and completion status.",
+        "breadcrumb": "Delivery Notes",
+        "fields": [("Delivery No.", "delivery_number"), ("Order", "sales_order"), ("Customer", "customer"), ("Date", "delivery_date"), ("Tracking", "tracking_no"), ("Status", "status")],
+    },
+    "returns": {
+        "model": ReturnRMA,
+        "form": ReturnRMAForm,
+        "title": "Returns / RMA",
+        "description": "Register returned devices, approve returns, and track repair or replacement.",
+        "breadcrumb": "Returns / RMA",
+        "fields": [("RMA No.", "rma_number"), ("Customer", "customer"), ("Product", "product"), ("Date", "return_date"), ("Reason", "reason"), ("Status", "approval_status")],
+        "actions": [("Approve", "rma_approve"), ("Close", "rma_close")],
+    },
+    "users": {
+        "model": UserProfile,
+        "form": UserProfileForm,
+        "title": "User Roles",
+        "description": "Assign management, accountant, sales manager, and sales staff access profiles.",
+        "breadcrumb": "User Roles",
+        "fields": [("User", "user"), ("Role", "role"), ("Phone", "phone"), ("Status", "status")],
+    },
+}
 
 
 def customer(request):
@@ -52,6 +236,167 @@ def customer_delete(request, pk):
         "title": "Delete Customer",
         "list_url": "customer",
     })
+
+
+def module_list(request, module):
+    config = MODULES[module]
+    records = config["model"].objects.all()
+    rows = [
+        {
+            "record": record,
+            "cells": [getattr(record, field_name) for _, field_name in config["fields"]],
+        }
+        for record in records
+    ]
+    return render(request, "records_list.html", {
+        **config,
+        "module": module,
+        "records": records,
+        "rows": rows,
+        "new_url": f"{module}_new",
+        "edit_url": f"{module}_edit",
+        "delete_url": f"{module}_delete",
+        "actions": config.get("actions", []),
+    })
+
+
+def module_form(request, module, pk=None):
+    config = MODULES[module]
+    model = config["model"]
+    form_class = config["form"]
+    record = get_object_or_404(model, pk=pk) if pk else None
+    is_first_user_setup = module == "users" and record is None and not UserProfile.objects.exists()
+
+    if request.method == "POST":
+        form = form_class(request.POST, instance=record)
+        if form.is_valid():
+            saved = form.save()
+            action = "updated" if record else "added"
+            log_activity(request, config["title"], action.title(), saved)
+            messages.success(request, f"{config['breadcrumb']} {action} successfully.")
+            if is_first_user_setup:
+                login(request, saved.user)
+                return redirect("index")
+            return redirect(module)
+    else:
+        form = form_class(instance=record)
+
+    return render(request, "entity_form.html", {
+        "form": form,
+        "title": f"Edit {config['breadcrumb']}" if record else f"New {config['breadcrumb']}",
+        "list_url": module,
+        "breadcrumb": config["breadcrumb"],
+    })
+
+
+def module_delete(request, module, pk):
+    config = MODULES[module]
+    record = get_object_or_404(config["model"], pk=pk)
+    if request.method == "POST":
+        object_name = str(record)
+        if module == "users":
+            log_activity(request, config["title"], "Deleted", object_name)
+            record.user.delete()
+        else:
+            record.delete()
+            log_activity(request, config["title"], "Deleted", object_name)
+        messages.success(request, f"{config['breadcrumb']} deleted successfully.")
+        return redirect(module)
+
+    return render(request, "confirm_delete.html", {
+        "object": record,
+        "title": f"Delete {config['breadcrumb']}",
+        "list_url": module,
+    })
+
+
+def log_activity(request, module, action, obj):
+    AuditLog.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        module=module,
+        action=action,
+        object_name=str(obj),
+    )
+
+
+def next_number(prefix, model, field_name):
+    today = timezone.localdate().strftime("%Y%m%d")
+    base = f"{prefix}-{today}"
+    count = model.objects.filter(**{f"{field_name}__startswith": base}).count() + 1
+    return f"{base}-{count:03d}"
+
+
+def quotation_to_order(request, pk):
+    quotation = get_object_or_404(Quotation, pk=pk)
+    order = SalesOrder.objects.create(
+        order_number=next_number("SO", SalesOrder, "order_number"),
+        quotation=quotation,
+        customer=quotation.customer,
+        order_date=timezone.localdate(),
+        expected_delivery_date=quotation.valid_until,
+        amount=quotation.amount,
+        status="Pending",
+        notes=f"Created from quotation {quotation.quotation_number}.",
+    )
+    quotation.status = "Approved"
+    quotation.save(update_fields=["status"])
+    log_activity(request, "Sales Orders", "Created From Quotation", order)
+    messages.success(request, f"Sales order {order.order_number} created from quotation.")
+    return redirect("sales_orders")
+
+
+def sales_order_to_delivery(request, pk):
+    order = get_object_or_404(SalesOrder, pk=pk)
+    delivery = DeliveryNote.objects.create(
+        delivery_number=next_number("DN", DeliveryNote, "delivery_number"),
+        sales_order=order,
+        customer=order.customer,
+        delivery_date=timezone.localdate(),
+        status="Pending",
+        notes=f"Created from sales order {order.order_number}.",
+    )
+    order.status = "Approved"
+    order.save(update_fields=["status"])
+    log_activity(request, "Delivery Notes", "Created From Sales Order", delivery)
+    messages.success(request, f"Delivery note {delivery.delivery_number} created.")
+    return redirect("delivery_notes")
+
+
+def sales_order_to_invoice(request, pk):
+    order = get_object_or_404(SalesOrder, pk=pk)
+    invoice_obj = Invoice.objects.create(
+        invoice_number=next_number("INV", Invoice, "invoice_number"),
+        customer=order.customer,
+        invoice_date=timezone.localdate(),
+        due_date=order.expected_delivery_date,
+        amount=order.amount,
+        status="Active",
+        notes=f"Created from sales order {order.order_number}.",
+    )
+    order.status = "Completed"
+    order.save(update_fields=["status"])
+    log_activity(request, "Invoice", "Created From Sales Order", invoice_obj)
+    messages.success(request, f"Invoice {invoice_obj.invoice_number} created.")
+    return redirect("invoice_preview", pk=invoice_obj.pk)
+
+
+def rma_approve(request, pk):
+    rma = get_object_or_404(ReturnRMA, pk=pk)
+    rma.approval_status = ReturnRMA.APPROVED
+    rma.save(update_fields=["approval_status"])
+    log_activity(request, "Returns / RMA", "Approved", rma)
+    messages.success(request, f"RMA {rma.rma_number} approved.")
+    return redirect("returns")
+
+
+def rma_close(request, pk):
+    rma = get_object_or_404(ReturnRMA, pk=pk)
+    rma.approval_status = ReturnRMA.CLOSED
+    rma.closed_date = timezone.localdate()
+    rma.save(update_fields=["approval_status", "closed_date"])
+    log_activity(request, "Returns / RMA", "Closed", rma)
+    messages.success(request, f"RMA {rma.rma_number} closed.")
+    return redirect("returns")
 
 def merchant(request):
     merchants = Merchant.objects.all()
@@ -352,3 +697,35 @@ def petty_cash_delete(request, pk):
         "title": "Delete Petty Cash",
         "list_url": "petty_cash",
     })
+
+
+def reports(request):
+    production_by_status = RefurbishmentJob.objects.values("production_status").annotate(total=Count("id")).order_by("production_status")
+    returns_by_status = ReturnRMA.objects.values("approval_status").annotate(total=Count("id")).order_by("approval_status")
+    stock_by_category = Product.objects.values("category").annotate(total_quantity=Sum("stock_quantity")).order_by("category")
+    sales_total = Invoice.objects.filter(status="Active").aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    quote_total = Quotation.objects.exclude(status="Cancelled").aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    return render(request, "reports.html", {
+        "inventory_count": Product.objects.count(),
+        "warehouse_count": Warehouse.objects.count(),
+        "warehouse_stock_count": WarehouseStock.objects.count(),
+        "stock_movements_count": StockMovement.objects.count(),
+        "production_count": RefurbishmentJob.objects.count(),
+        "sales_total": sales_total,
+        "quote_total": quote_total,
+        "returns_count": ReturnRMA.objects.count(),
+        "production_by_status": production_by_status,
+        "returns_by_status": returns_by_status,
+        "stock_by_category": stock_by_category,
+    })
+
+
+def audit_logs(request):
+    logs = AuditLog.objects.select_related("user")[:100]
+    return render(request, "audit_logs.html", {"logs": logs})
+
+
+def warehouse_stock(request):
+    balances = WarehouseStock.objects.select_related("warehouse", "product")
+    return render(request, "warehouse_stock.html", {"balances": balances})

@@ -1,0 +1,57 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  {% include 'layout/head.html' %}
+  <body class="auth-page">
+    <main class="auth-shell">
+      <section class="auth-panel">
+        <div class="auth-brand">
+          <img src="{% static 'assets/img/logo.svg' %}" alt="Inventry">
+          <div>
+            <h1>Inventry Login</h1>
+            <p>Sign in to manage accounts, inventory, production, and sales.</p>
+          </div>
+        </div>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="alert">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post" class="auth-form">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label" for="username">Username</label>
+            <input class="form-control" id="username" name="username" autocomplete="username" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="btn btn-primary w-100" type="submit">Login</button>
+        </form>
+
+        <div class="auth-links">
+          <a href="{% url 'register' %}">Register new account</a>
+          <a href="{% url 'forgot_username' %}">Forgot username?</a>
+        </div>
+
+        {% if users %}
+        <div class="auth-user-list">
+          <h2>Available Users</h2>
+          <ul>
+            {% for profile in users %}
+            <li>
+              <span>{{ profile.user.username }}</span>
+              <small>{{ profile.role }}</small>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </section>
+    </main>
+    {% include 'layout/script.html' %}
+  </body>
+</html>

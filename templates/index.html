@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block content %}
-
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
   <div>
     <nav aria-label="breadcrumb">
@@ -12,63 +11,50 @@
       </ol>
     </nav>
     <h1 class="page-title mb-1">Dashboard</h1>
-    <p class="text-muted mb-0">Overview of receivables, payables, cash balances, and recent activity.</p>
+    <p class="text-muted mb-0">Operational view for inventory, refurbishment, sales, returns, and cash.</p>
   </div>
   <div class="top-actions d-flex gap-2">
-    <button class="btn btn-outline-secondary">Export</button>
-    <a href="{% url 'newcustomer' %}" class="btn btn-primary">+ New</a>
+    <a href="{% url 'stock_movements_new' %}" class="btn btn-outline-secondary">Stock Entry</a>
+    <a href="{% url 'refurbishment_jobs_new' %}" class="btn btn-primary">+ Device Intake</a>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-xl-3">
     <div class="card card-hero p-3 h-100">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h6 class="text-muted mb-2">Total Receivables</h6>
-          <h3 class="mb-0">AED 285,400</h3>
-        </div>
-        <span class="badge badge-sent rounded-pill">+12%</span>
-      </div>
-      <p class="text-muted mb-0">Expected from open invoices.</p>
+      <h6 class="text-muted mb-2">Receivables</h6>
+      <h3 class="mb-0">AED {{ receivables }}</h3>
+      <p class="text-muted mb-0">Active invoice value.</p>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card card-hero p-3 h-100">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h6 class="text-muted mb-2">Total Payables</h6>
-          <h3 class="mb-0">AED 164,200</h3>
-        </div>
-        <span class="badge badge-draft rounded-pill">Due</span>
-      </div>
-      <p class="text-muted mb-0">Upcoming purchase obligations.</p>
+      <h6 class="text-muted mb-2">Payables</h6>
+      <h3 class="mb-0">AED {{ payables }}</h3>
+      <p class="text-muted mb-0">Active supplier obligations.</p>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card card-hero p-3 h-100">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h6 class="text-muted mb-2">Cash Balance</h6>
-          <h3 class="mb-0">AED 98,750</h3>
-        </div>
-        <span class="badge badge-paid rounded-pill">Available</span>
-      </div>
-      <p class="text-muted mb-0">Cash in hand and bank accounts.</p>
+      <h6 class="text-muted mb-2">Cash Balance</h6>
+      <h3 class="mb-0">AED {{ cash_balance }}</h3>
+      <p class="text-muted mb-0">Investment plus petty cash minus outflow.</p>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card card-hero p-3 h-100">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h6 class="text-muted mb-2">VAT Payable</h6>
-          <h3 class="mb-0">AED 7,420</h3>
-        </div>
-        <span class="badge badge-sent rounded-pill">Tax</span>
-      </div>
-      <p class="text-muted mb-0">VAT due this reporting period.</p>
+      <h6 class="text-muted mb-2">Petty Cash</h6>
+      <h3 class="mb-0">AED {{ petty_cash_balance }}</h3>
+      <p class="text-muted mb-0">Small cash balance.</p>
     </div>
   </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3"><div class="section-card p-3 h-100"><p class="text-muted mb-1">Open Invoices</p><h4 class="mb-0">{{ open_invoices }}</h4></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="section-card p-3 h-100"><p class="text-muted mb-1">Stock Alerts</p><h4 class="mb-0">{{ stock_alerts }}</h4></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="section-card p-3 h-100"><p class="text-muted mb-1">Production Open</p><h4 class="mb-0">{{ production_open }}</h4></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="section-card p-3 h-100"><p class="text-muted mb-1">Returns Open</p><h4 class="mb-0">{{ returns_open }}</h4></div></div>
 </div>
 
 <div class="row g-3">
@@ -77,51 +63,28 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
-            <h5 class="mb-1">Recent Activity</h5>
-            <p class="text-muted mb-0">Latest invoice and payment events.</p>
+            <h5 class="mb-1">Recent Invoices</h5>
+            <p class="text-muted mb-0">Latest customer billing records.</p>
           </div>
-          <button class="btn btn-outline-primary btn-sm">View All</button>
+          <a href="{% url 'invoice' %}" class="btn btn-outline-primary btn-sm">View All</a>
         </div>
         <div class="table-responsive">
           <table class="table table-hover table-sticky align-middle">
             <thead>
-              <tr>
-                <th>Date</th>
-                <th>Activity</th>
-                <th>Customer</th>
-                <th>Status</th>
-                <th class="text-end">Amount</th>
-              </tr>
+              <tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Status</th><th class="text-end">Amount</th></tr>
             </thead>
             <tbody>
+              {% for invoice_item in recent_invoices %}
               <tr>
-                <td>Aug 6, 2026</td>
-                <td>Invoice sent</td>
-                <td>Atlas Logistics</td>
-                <td><span class="badge badge-sent">Sent</span></td>
-                <td class="text-end">AED 15,600</td>
+                <td>{{ invoice_item.invoice_number }}</td>
+                <td>{{ invoice_item.customer|default:"-" }}</td>
+                <td>{{ invoice_item.invoice_date }}</td>
+                <td><span class="badge badge-sent">{{ invoice_item.status }}</span></td>
+                <td class="text-end">AED {{ invoice_item.amount }}</td>
               </tr>
-              <tr>
-                <td>Aug 5, 2026</td>
-                <td>Payment received</td>
-                <td>Desert Furnishings</td>
-                <td><span class="badge badge-paid">Paid</span></td>
-                <td class="text-end">AED 34,200</td>
-              </tr>
-              <tr>
-                <td>Aug 3, 2026</td>
-                <td>New purchase order</td>
-                <td>Dubai Supplies</td>
-                <td><span class="badge badge-draft">Draft</span></td>
-                <td class="text-end">AED 22,450</td>
-              </tr>
-              <tr>
-                <td>Aug 1, 2026</td>
-                <td>Expense recorded</td>
-                <td>Office Supplies</td>
-                <td><span class="badge badge-sent">Posted</span></td>
-                <td class="text-end">AED 1,190</td>
-              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-4">No invoices yet.</td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -131,41 +94,31 @@
   <div class="col-xl-4">
     <div class="section-card mb-4">
       <div class="card-body">
-        <h5 class="mb-3">Quick Metrics</h5>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <p class="text-muted mb-1">Open Invoices</p>
-            <h4 class="mb-0">18</h4>
-          </div>
-          <div class="text-end">
-            <p class="text-muted mb-1">Overdue</p>
-            <h4 class="mb-0 text-danger">5</h4>
-          </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <p class="text-muted mb-1">Stock Alerts</p>
-            <h4 class="mb-0">7 items</h4>
-          </div>
-          <div class="text-end">
-            <p class="text-muted mb-1">VAT Returns</p>
-            <h4 class="mb-0">2 due</h4>
-          </div>
-        </div>
+        <h5 class="mb-3">Open Returns</h5>
+        <ul class="list-group list-group-flush">
+          {% for rma in recent_returns %}
+          <li class="list-group-item px-0 py-2 d-flex justify-content-between gap-3">
+            <span>{{ rma.rma_number }} - {{ rma.product|default:rma.reason }}</span>
+            <span class="badge badge-draft">{{ rma.approval_status }}</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item px-0 py-2 text-muted">No return records.</li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
     <div class="section-card">
       <div class="card-body">
         <h5 class="mb-3">Recent Customers</h5>
         <ul class="list-group list-group-flush">
-          <li class="list-group-item px-0 py-2">Aqua Services</li>
-          <li class="list-group-item px-0 py-2">Gulf Paper Traders</li>
-          <li class="list-group-item px-0 py-2">Riyadh Retail Co.</li>
-          <li class="list-group-item px-0 py-2">City Events LLC</li>
+          {% for customer_item in recent_customers %}
+          <li class="list-group-item px-0 py-2">{{ customer_item.display_name }}</li>
+          {% empty %}
+          <li class="list-group-item px-0 py-2 text-muted">No customers yet.</li>
+          {% endfor %}
         </ul>
       </div>
     </div>
   </div>
 </div>
-
 {% endblock %}

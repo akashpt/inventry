@@ -4,18 +4,28 @@ from django.contrib.auth import get_user_model
 from .models import (
     Customer,
     DeliveryNote,
+    DeliveryNoteItem,
     FinanceEntry,
     Invoice,
+    InvoiceItem,
     Merchant,
+    AppSetting,
     PettyCashTransaction,
+    PaymentReceived,
     Product,
     ProductionTask,
+    PurchaseOrder,
+    PurchaseOrderItem,
     Quotation,
+    QuotationItem,
     RefurbishmentJob,
     ReturnRMA,
+    ReturnHistory,
     SalesOrder,
+    SalesOrderItem,
     STATUS_CHOICES,
     StockMovement,
+    SupplierBill,
     UserProfile,
     Warehouse,
 )
@@ -98,7 +108,6 @@ class ProductForm(forms.ModelForm):
             "unit",
             "sale_price",
             "purchase_price",
-            "stock_quantity",
             "status",
         ]
 
@@ -184,6 +193,8 @@ class RefurbishmentJobForm(forms.ModelForm):
             "qc_technician",
             "supplier_status",
             "production_status",
+            "finished_product",
+            "finished_warehouse",
             "estimated_cost",
             "actual_cost",
             "notes",
@@ -208,6 +219,9 @@ class ProductionTaskForm(forms.ModelForm):
             "issue_found",
             "repair_action",
             "parts_used",
+            "parts_product",
+            "parts_warehouse",
+            "parts_quantity",
             "status",
         ]
         widgets = {
@@ -255,6 +269,16 @@ class QuotationForm(forms.ModelForm):
         apply_bootstrap_widgets(self)
 
 
+class QuotationItemForm(forms.ModelForm):
+    class Meta:
+        model = QuotationItem
+        fields = ["quotation", "product", "description", "quantity", "unit_price", "discount_amount", "tax_amount"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
 class SalesOrderForm(forms.ModelForm):
     class Meta:
         model = SalesOrder
@@ -278,6 +302,16 @@ class SalesOrderForm(forms.ModelForm):
         apply_bootstrap_widgets(self)
 
 
+class SalesOrderItemForm(forms.ModelForm):
+    class Meta:
+        model = SalesOrderItem
+        fields = ["sales_order", "product", "warehouse", "description", "quantity", "unit_price", "discount_amount", "tax_amount"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
 class DeliveryNoteForm(forms.ModelForm):
     class Meta:
         model = DeliveryNote
@@ -294,6 +328,99 @@ class DeliveryNoteForm(forms.ModelForm):
         widgets = {
             "delivery_date": forms.DateInput(attrs={"type": "date"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
+class DeliveryNoteItemForm(forms.ModelForm):
+    class Meta:
+        model = DeliveryNoteItem
+        fields = ["delivery_note", "product", "warehouse", "quantity", "notes"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
+class InvoiceItemForm(forms.ModelForm):
+    class Meta:
+        model = InvoiceItem
+        fields = ["invoice", "product", "warehouse", "description", "quantity", "unit_price", "discount_amount", "tax_amount"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
+class PurchaseOrderForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrder
+        fields = ["order_number", "supplier", "order_date", "expected_date", "status", "notes"]
+        widgets = {
+            "order_date": forms.DateInput(attrs={"type": "date"}),
+            "expected_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
+class PurchaseOrderItemForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderItem
+        fields = ["purchase_order", "product", "warehouse", "quantity", "unit_price", "tax_amount"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+    def clean_quantity(self):
+        quantity = self.cleaned_data["quantity"]
+        if quantity <= 0:
+            raise forms.ValidationError("Quantity must be greater than zero.")
+        return quantity
+
+
+class SupplierBillForm(forms.ModelForm):
+    class Meta:
+        model = SupplierBill
+        fields = ["bill_number", "supplier", "purchase_order", "bill_date", "due_date", "amount", "paid_amount", "status", "notes"]
+        widgets = {
+            "bill_date": forms.DateInput(attrs={"type": "date"}),
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+
+class PaymentReceivedForm(forms.ModelForm):
+    class Meta:
+        model = PaymentReceived
+        fields = ["payment_number", "customer", "invoice", "payment_date", "amount", "payment_mode", "reference_no", "notes"]
+        widgets = {
+            "payment_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_bootstrap_widgets(self)
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount <= 0:
+            raise forms.ValidationError("Amount must be greater than zero.")
+        return amount
+
+
+class AppSettingForm(forms.ModelForm):
+    class Meta:
+        model = AppSetting
+        fields = ["company_name", "currency", "low_stock_threshold", "vat_rate", "default_warehouse"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -396,9 +523,12 @@ class RegisterForm(forms.Form):
     email = forms.EmailField(required=False)
     password = forms.CharField(widget=forms.PasswordInput)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
+    role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if UserProfile.objects.filter(role=UserProfile.MANAGEMENT, status="Active").exists():
+            self.fields["role"].choices = [(UserProfile.SALES_STAFF, "Sales Staff")]
         apply_bootstrap_widgets(self)
 
     def clean_username(self):
@@ -424,7 +554,7 @@ class RegisterForm(forms.Form):
         )
         profile = UserProfile.objects.create(
             user=user,
-            role=UserProfile.SALES_STAFF,
+            role=self.cleaned_data["role"],
             status="Active",
         )
         return profile

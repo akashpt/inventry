@@ -10,22 +10,38 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def load_local_env():
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_local_env()
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-29r&v1tqu#d)+&0-p@p3*@l82po)px4^i8g7_r(61pduua^)g6'
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-only-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if host.strip()]
 
 
 # Application definition
@@ -77,11 +93,11 @@ WSGI_APPLICATION = 'inventry_project.wsgi.application'
 DATABASES = {
     'default': {
         "ENGINE": "django.db.backends.mysql", 
-        "NAME": "my_database", 
-        "USER": "vpsuser", 
-        "PASSWORD": "Tishya@321!", 
-        "HOST": "72.62.241.175", 
-        "PORT": "3306", 
+        "NAME": os.environ.get("DB_NAME", "my_database"), 
+        "USER": os.environ.get("DB_USER", "vpsuser"), 
+        "PASSWORD": os.environ.get("DB_PASSWORD", ""), 
+        "HOST": os.environ.get("DB_HOST", "127.0.0.1"), 
+        "PORT": os.environ.get("DB_PORT", "3306"), 
         "OPTIONS": { "charset": "utf8mb4", },
     }
 }

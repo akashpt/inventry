@@ -101,6 +101,11 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    def recalculate_stock(self):
+        total = WarehouseStock.objects.filter(product=self).aggregate(total=models.Sum("quantity"))["total"] or 0
+        self.stock_quantity = total
+        self.save(update_fields=["stock_quantity"])
+
 
 class Warehouse(models.Model):
     name = models.CharField(max_length=150)
@@ -120,7 +125,7 @@ class Warehouse(models.Model):
 
 class WarehouseStock(models.Model):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField(default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -149,8 +154,8 @@ class StockMovement(models.Model):
     movement_type = models.CharField(max_length=30, choices=MOVEMENT_TYPE_CHOICES)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.IntegerField()
-    from_warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_out")
-    to_warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_in")
+    from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True, related_name="stock_out")
+    to_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True, related_name="stock_in")
     reference_no = models.CharField(max_length=80, blank=True)
     barcode = models.CharField(max_length=120, blank=True)
     status = models.CharField(max_length=30, choices=DOCUMENT_STATUS_CHOICES, default="Completed")
@@ -220,10 +225,17 @@ def adjust_stock(product, warehouse, quantity, update_product=True):
         warehouse=warehouse,
         defaults={"quantity": 0},
     )
-    stock.quantity += quantity
+    new_quantity = stock.quantity + quantity
+    if new_quantity < 0:
+        raise ValidationError(f"Not enough stock for {product} in {warehouse}.")
+    stock.quantity = new_quantity
     stock.save(update_fields=["quantity", "updated_at"])
     if update_product:
         Product.objects.filter(pk=product.pk).update(stock_quantity=models.F("stock_quantity") + quantity)
+
+
+def line_total(quantity, unit_price, discount_amount=0, tax_amount=0):
+    return (quantity * unit_price) - discount_amount + tax_amount
 
 
 class RefurbishmentJob(models.Model):
@@ -252,6 +264,9 @@ class RefurbishmentJob(models.Model):
     qc_technician = models.CharField(max_length=120, blank=True)
     supplier_status = models.CharField(max_length=120, blank=True)
     production_status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=INTAKE)
+    finished_product = models.ForeignKey(Product, on_delete=models.PROTECT, null=True, blank=True, related_name="refurbished_jobs")
+    finished_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True, related_name="refurbished_jobs")
+    finished_stocked = models.BooleanField(default=False)
     estimated_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     actual_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
@@ -262,6 +277,30 @@ class RefurbishmentJob(models.Model):
 
     def __str__(self):
         return f"{self.intake_no} - {self.model_name}"
+
+    def save(self, *args, **kwargs):
+        creating_stock = (
+            self.production_status == self.READY
+            and self.finished_product
+            and self.finished_warehouse
+            and not self.finished_stocked
+        )
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if creating_stock:
+                StockMovement.objects.create(
+                    movement_date=self.intake_date,
+                    movement_type=StockMovement.RECEIVE,
+                    product=self.finished_product,
+                    quantity=1,
+                    to_warehouse=self.finished_warehouse,
+                    reference_no=self.intake_no,
+                    barcode=self.serial_no,
+                    status="Completed",
+                    notes="Auto-stocked from completed refurbishment job.",
+                )
+                self.finished_stocked = True
+                super().save(update_fields=["finished_stocked"])
 
 
 class ProductionTask(models.Model):
@@ -284,6 +323,10 @@ class ProductionTask(models.Model):
     issue_found = models.CharField(max_length=255, blank=True)
     repair_action = models.TextField(blank=True)
     parts_used = models.CharField(max_length=255, blank=True)
+    parts_product = models.ForeignKey(Product, on_delete=models.PROTECT, null=True, blank=True, related_name="production_usage")
+    parts_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True, related_name="production_usage")
+    parts_quantity = models.PositiveIntegerField(default=0)
+    parts_issued = models.BooleanField(default=False)
     status = models.CharField(max_length=30, choices=TASK_STATUS_CHOICES, default=OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -293,6 +336,30 @@ class ProductionTask(models.Model):
     def __str__(self):
         return f"{self.job} - {self.stage}"
 
+    def save(self, *args, **kwargs):
+        issue_parts = (
+            self.status == self.DONE
+            and self.parts_product
+            and self.parts_warehouse
+            and self.parts_quantity
+            and not self.parts_issued
+        )
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if issue_parts:
+                StockMovement.objects.create(
+                    movement_date=self.task_date,
+                    movement_type=StockMovement.ISSUE,
+                    product=self.parts_product,
+                    quantity=self.parts_quantity,
+                    from_warehouse=self.parts_warehouse,
+                    reference_no=str(self.job.intake_no),
+                    status="Completed",
+                    notes=f"Auto-issued for production task {self.stage}.",
+                )
+                self.parts_issued = True
+                super().save(update_fields=["parts_issued"])
+
 
 class Invoice(models.Model):
     invoice_number = models.CharField(max_length=50, unique=True)
@@ -300,6 +367,7 @@ class Invoice(models.Model):
     invoice_date = models.DateField()
     due_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="Active")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -309,6 +377,10 @@ class Invoice(models.Model):
 
     def __str__(self):
         return self.invoice_number
+
+    @property
+    def balance_due(self):
+        return self.amount - self.paid_amount
 
 
 class Quotation(models.Model):
@@ -326,6 +398,37 @@ class Quotation(models.Model):
 
     def __str__(self):
         return self.quotation_number
+
+    def recalculate_amount(self):
+        self.amount = self.items.aggregate(total=models.Sum("total"))["total"] or 0
+        self.save(update_fields=["amount"])
+
+
+class QuotationItem(models.Model):
+    quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    description = models.CharField(max_length=255, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        self.total = line_total(self.quantity, self.unit_price, self.discount_amount, self.tax_amount)
+        super().save(*args, **kwargs)
+        self.quotation.recalculate_amount()
+
+    def delete(self, *args, **kwargs):
+        quotation = self.quotation
+        super().delete(*args, **kwargs)
+        quotation.recalculate_amount()
+
+    def __str__(self):
+        return f"{self.quotation} - {self.product}"
 
 
 class SalesOrder(models.Model):
@@ -345,6 +448,45 @@ class SalesOrder(models.Model):
     def __str__(self):
         return self.order_number
 
+    def recalculate_amount(self):
+        self.amount = self.items.aggregate(total=models.Sum("total"))["total"] or 0
+        self.save(update_fields=["amount"])
+
+
+class SalesOrderItem(models.Model):
+    sales_order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["id"]
+
+    def clean(self):
+        if self.warehouse:
+            available = WarehouseStock.objects.filter(product=self.product, warehouse=self.warehouse).first()
+            if not available or available.quantity < self.quantity:
+                raise ValidationError("Selected warehouse does not have enough stock.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        self.total = line_total(self.quantity, self.unit_price, self.discount_amount, self.tax_amount)
+        super().save(*args, **kwargs)
+        self.sales_order.recalculate_amount()
+
+    def delete(self, *args, **kwargs):
+        sales_order = self.sales_order
+        super().delete(*args, **kwargs)
+        sales_order.recalculate_amount()
+
+    def __str__(self):
+        return f"{self.sales_order} - {self.product}"
+
 
 class DeliveryNote(models.Model):
     delivery_number = models.CharField(max_length=50, unique=True)
@@ -362,6 +504,159 @@ class DeliveryNote(models.Model):
 
     def __str__(self):
         return self.delivery_number
+
+
+class DeliveryNoteItem(models.Model):
+    delivery_note = models.ForeignKey(DeliveryNote, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.delivery_note} - {self.product}"
+
+
+class InvoiceItem(models.Model):
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        self.total = line_total(self.quantity, self.unit_price, self.discount_amount, self.tax_amount)
+        super().save(*args, **kwargs)
+        self.invoice.amount = self.invoice.items.aggregate(total=models.Sum("total"))["total"] or 0
+        self.invoice.save(update_fields=["amount"])
+
+    def delete(self, *args, **kwargs):
+        invoice = self.invoice
+        super().delete(*args, **kwargs)
+        invoice.amount = invoice.items.aggregate(total=models.Sum("total"))["total"] or 0
+        invoice.save(update_fields=["amount"])
+
+    def __str__(self):
+        return f"{self.invoice} - {self.product}"
+
+
+class PurchaseOrder(models.Model):
+    order_number = models.CharField(max_length=50, unique=True)
+    supplier = models.ForeignKey(Merchant, on_delete=models.PROTECT)
+    order_date = models.DateField()
+    expected_date = models.DateField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=30, choices=DOCUMENT_STATUS_CHOICES, default="Pending")
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-order_date", "-created_at"]
+
+    def recalculate_amount(self):
+        self.amount = self.items.aggregate(total=models.Sum("total"))["total"] or 0
+        self.save(update_fields=["amount"])
+
+    def __str__(self):
+        return self.order_number
+
+
+class PurchaseOrderItem(models.Model):
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        self.total = line_total(self.quantity, self.unit_price, 0, self.tax_amount)
+        super().save(*args, **kwargs)
+        self.purchase_order.recalculate_amount()
+
+    def delete(self, *args, **kwargs):
+        purchase_order = self.purchase_order
+        super().delete(*args, **kwargs)
+        purchase_order.recalculate_amount()
+
+    def __str__(self):
+        return f"{self.purchase_order} - {self.product}"
+
+
+class SupplierBill(models.Model):
+    bill_number = models.CharField(max_length=50, unique=True)
+    supplier = models.ForeignKey(Merchant, on_delete=models.PROTECT)
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.SET_NULL, null=True, blank=True)
+    bill_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=30, choices=DOCUMENT_STATUS_CHOICES, default="Pending")
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-bill_date", "-created_at"]
+
+    @property
+    def balance_due(self):
+        return self.amount - self.paid_amount
+
+    def __str__(self):
+        return self.bill_number
+
+
+class PaymentReceived(models.Model):
+    payment_number = models.CharField(max_length=50, unique=True)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True)
+    payment_date = models.DateField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_mode = models.CharField(max_length=50, blank=True)
+    reference_no = models.CharField(max_length=80, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-payment_date", "-created_at"]
+
+    def __str__(self):
+        return self.payment_number
+
+    def save(self, *args, **kwargs):
+        previous = None
+        if self.pk:
+            previous = PaymentReceived.objects.get(pk=self.pk)
+        super().save(*args, **kwargs)
+        if previous and previous.invoice:
+            previous.invoice.paid_amount = PaymentReceived.objects.filter(invoice=previous.invoice).aggregate(total=models.Sum("amount"))["total"] or 0
+            previous.invoice.save(update_fields=["paid_amount"])
+        if self.invoice:
+            self.invoice.paid_amount = PaymentReceived.objects.filter(invoice=self.invoice).aggregate(total=models.Sum("amount"))["total"] or 0
+            self.invoice.status = "Inactive" if self.invoice.paid_amount >= self.invoice.amount else "Active"
+            self.invoice.save(update_fields=["paid_amount", "status"])
+
+    def delete(self, *args, **kwargs):
+        invoice = self.invoice
+        super().delete(*args, **kwargs)
+        if invoice:
+            invoice.paid_amount = PaymentReceived.objects.filter(invoice=invoice).aggregate(total=models.Sum("amount"))["total"] or 0
+            invoice.status = "Inactive" if invoice.paid_amount >= invoice.amount else "Active"
+            invoice.save(update_fields=["paid_amount", "status"])
 
 
 class ReturnRMA(models.Model):
@@ -390,7 +685,11 @@ class ReturnRMA(models.Model):
     approval_status = models.CharField(max_length=30, choices=RMA_STATUS_CHOICES, default=REQUESTED)
     resolution = models.CharField(max_length=120, blank=True)
     assigned_to = models.CharField(max_length=120, blank=True)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_rmas")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.CharField(max_length=255, blank=True)
     closed_date = models.DateField(null=True, blank=True)
+    returned_stocked = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -399,6 +698,20 @@ class ReturnRMA(models.Model):
 
     def __str__(self):
         return self.rma_number
+
+
+class ReturnHistory(models.Model):
+    rma = models.ForeignKey(ReturnRMA, on_delete=models.CASCADE, related_name="history")
+    status = models.CharField(max_length=30)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
+
+    def __str__(self):
+        return f"{self.rma} - {self.status}"
 
 
 class UserProfile(models.Model):
@@ -440,6 +753,22 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.module} - {self.action}"
+
+
+class AppSetting(models.Model):
+    company_name = models.CharField(max_length=150, default="SKH Computers")
+    currency = models.CharField(max_length=20, default="AED")
+    low_stock_threshold = models.PositiveIntegerField(default=5)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    default_warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "App Setting"
+        verbose_name_plural = "App Settings"
+
+    def __str__(self):
+        return self.company_name
 
 
 class FinanceEntry(models.Model):

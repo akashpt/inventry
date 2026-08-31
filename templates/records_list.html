@@ -64,7 +64,10 @@
                         {% endfor %}
                         <td class="text-end">
                             {% for label, action_url in actions %}
-                                <a href="{% url action_url row.record.id %}" class="btn btn-outline-secondary btn-sm">{{ label }}</a>
+                                <form method="post" action="{% url action_url row.record.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-outline-secondary btn-sm" type="submit">{{ label }}</button>
+                                </form>
                             {% endfor %}
                             <a href="{% url edit_url row.record.id %}" class="btn btn-outline-primary btn-sm">Edit</a>
                             <a href="{% url delete_url row.record.id %}" class="btn btn-outline-danger btn-sm">Delete</a>

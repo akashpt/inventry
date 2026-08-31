@@ -1,0 +1,45 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2"><li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li><li class="breadcrumb-item active">Supplier Statement</li></ol>
+        </nav>
+        <h1 class="page-title mb-1">Supplier Statement</h1>
+        <p class="text-muted mb-0">Supplier bills, paid amount, and payable balance.</p>
+    </div>
+</div>
+<div class="section-card mb-4">
+    <div class="card-body">
+        <form method="get" class="row gy-3 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label" for="supplier">Supplier</label>
+                <select class="form-select" id="supplier" name="supplier">
+                    <option value="">Select supplier</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}" {% if selected_supplier.id == supplier.id %}selected{% endif %}>{{ supplier }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4"><button class="btn btn-primary w-100" type="submit">View Statement</button></div>
+        </form>
+    </div>
+</div>
+{% if selected_supplier %}
+<div class="section-card">
+    <div class="card-body">
+        <h5 class="mb-3">{{ selected_supplier }} Balance: AED {{ balance }}</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Bill</th><th>Date</th><th>Due</th><th class="text-end">Amount</th><th class="text-end">Paid</th></tr></thead>
+                <tbody>
+                    {% for bill in bills %}<tr><td>{{ bill.bill_number }}</td><td>{{ bill.bill_date }}</td><td>{{ bill.due_date|default:"-" }}</td><td class="text-end">AED {{ bill.amount }}</td><td class="text-end">AED {{ bill.paid_amount }}</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

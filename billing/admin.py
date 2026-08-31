@@ -4,17 +4,27 @@ from .models import (
     AuditLog,
     Customer,
     DeliveryNote,
+    DeliveryNoteItem,
     FinanceEntry,
     Invoice,
+    InvoiceItem,
     Merchant,
+    AppSetting,
     PettyCashTransaction,
+    PaymentReceived,
     Product,
     ProductionTask,
+    PurchaseOrder,
+    PurchaseOrderItem,
     Quotation,
+    QuotationItem,
     RefurbishmentJob,
     ReturnRMA,
+    ReturnHistory,
     SalesOrder,
+    SalesOrderItem,
     StockMovement,
+    SupplierBill,
     UserProfile,
     Warehouse,
     WarehouseStock,
@@ -100,11 +110,21 @@ class QuotationAdmin(admin.ModelAdmin):
     search_fields = ("quotation_number", "customer__display_name")
 
 
+@admin.register(QuotationItem)
+class QuotationItemAdmin(admin.ModelAdmin):
+    list_display = ("quotation", "product", "quantity", "unit_price", "total")
+
+
 @admin.register(SalesOrder)
 class SalesOrderAdmin(admin.ModelAdmin):
     list_display = ("order_number", "customer", "order_date", "expected_delivery_date", "amount", "status")
     list_filter = ("status",)
     search_fields = ("order_number", "customer__display_name")
+
+
+@admin.register(SalesOrderItem)
+class SalesOrderItemAdmin(admin.ModelAdmin):
+    list_display = ("sales_order", "product", "warehouse", "quantity", "unit_price", "total")
 
 
 @admin.register(DeliveryNote)
@@ -114,11 +134,56 @@ class DeliveryNoteAdmin(admin.ModelAdmin):
     search_fields = ("delivery_number", "tracking_no", "customer__display_name")
 
 
+@admin.register(DeliveryNoteItem)
+class DeliveryNoteItemAdmin(admin.ModelAdmin):
+    list_display = ("delivery_note", "product", "warehouse", "quantity")
+
+
+@admin.register(InvoiceItem)
+class InvoiceItemAdmin(admin.ModelAdmin):
+    list_display = ("invoice", "product", "warehouse", "quantity", "unit_price", "total")
+
+
+@admin.register(PurchaseOrder)
+class PurchaseOrderAdmin(admin.ModelAdmin):
+    list_display = ("order_number", "supplier", "order_date", "expected_date", "amount", "status")
+    list_filter = ("status",)
+    search_fields = ("order_number", "supplier__display_name")
+
+
+@admin.register(PurchaseOrderItem)
+class PurchaseOrderItemAdmin(admin.ModelAdmin):
+    list_display = ("purchase_order", "product", "warehouse", "quantity", "unit_price", "total")
+
+
+@admin.register(SupplierBill)
+class SupplierBillAdmin(admin.ModelAdmin):
+    list_display = ("bill_number", "supplier", "purchase_order", "bill_date", "due_date", "amount", "paid_amount", "status")
+    list_filter = ("status",)
+    search_fields = ("bill_number", "supplier__display_name")
+
+
+@admin.register(PaymentReceived)
+class PaymentReceivedAdmin(admin.ModelAdmin):
+    list_display = ("payment_number", "customer", "invoice", "payment_date", "amount", "payment_mode")
+    search_fields = ("payment_number", "customer__display_name", "reference_no")
+
+
 @admin.register(ReturnRMA)
 class ReturnRMAAdmin(admin.ModelAdmin):
     list_display = ("rma_number", "customer", "product", "return_date", "approval_status", "resolution")
     list_filter = ("approval_status",)
     search_fields = ("rma_number", "customer__display_name", "product__name")
+
+
+@admin.register(ReturnHistory)
+class ReturnHistoryAdmin(admin.ModelAdmin):
+    list_display = ("rma", "status", "changed_by", "changed_at")
+
+
+@admin.register(AppSetting)
+class AppSettingAdmin(admin.ModelAdmin):
+    list_display = ("company_name", "currency", "low_stock_threshold", "vat_rate", "default_warehouse", "updated_at")
 
 
 @admin.register(UserProfile)

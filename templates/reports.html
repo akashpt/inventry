@@ -16,10 +16,10 @@
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Products</h6><h3>{{ inventory_count }}</h3><p class="mb-0">Items in catalog.</p></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Warehouses</h6><h3>{{ warehouse_count }}</h3><p class="mb-0">{{ warehouse_stock_count }} stock balances.</p></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Active Sales</h6><h3>AED {{ sales_total }}</h3><p class="mb-0">Invoice value.</p></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Returns</h6><h3>{{ returns_count }}</h3><p class="mb-0">RMA records.</p></div></div>
+    <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'report_detail' 'inventory' %}"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Products</h6><h3>{{ inventory_count }}</h3><p class="mb-0">Items in catalog.</p></div></a></div>
+    <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'report_detail' 'stock' %}"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Warehouses</h6><h3>{{ warehouse_count }}</h3><p class="mb-0">{{ warehouse_stock_count }} stock balances.</p></div></a></div>
+    <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'report_detail' 'sales' %}"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Active Sales</h6><h3>AED {{ sales_total }}</h3><p class="mb-0">Invoice value.</p></div></a></div>
+    <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'report_detail' 'returns' %}"><div class="card card-hero p-3 h-100"><h6 class="text-muted mb-2">Returns</h6><h3>{{ returns_count }}</h3><p class="mb-0">RMA records.</p></div></a></div>
 </div>
 
 <div class="row g-3">

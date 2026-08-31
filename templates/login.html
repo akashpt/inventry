@@ -37,19 +37,6 @@
           <a href="{% url 'forgot_username' %}">Forgot username?</a>
         </div>
 
-        {% if users %}
-        <div class="auth-user-list">
-          <h2>Available Users</h2>
-          <ul>
-            {% for profile in users %}
-            <li>
-              <span>{{ profile.user.username }}</span>
-              <small>{{ profile.role }}</small>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
       </section>
     </main>
     {% include 'layout/script.html' %}

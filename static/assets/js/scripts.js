@@ -346,20 +346,12 @@ function addExpenseRow() {
 function actionMessage(label) {
   const messages = {
     'notifications': 'No new notifications.',
-    'profile': 'Profile page is not connected yet.',
-    'settings': 'Settings page is not connected yet.',
-    'investment': 'Investment page is not available yet.',
-    'withdrawal': 'Withdrawal page is not available yet.',
-    'expenses': 'Expenses page is not available yet.',
-    'reports': 'Reports page is not available yet.',
-    'purchases': 'Purchases page is not available yet.',
-    'cash & banking': 'Cash and banking page is not available yet.',
-    'more': 'More actions are ready to connect.',
+    'more': 'More actions are available from the row actions.',
     'date range': 'Date range picker is ready to connect.',
     'bulk actions': 'Select rows to use bulk actions.'
   };
 
-  return messages[label] || 'This action is ready to connect.';
+  return messages[label] || 'Action completed.';
 }
 
 function showToast(message) {
